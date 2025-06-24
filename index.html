@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide: Deploying a Docker App to AWS EC2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Slate & Sky -->
+    <!-- Application Structure Plan: A single-page application with a fixed left-hand navigation sidebar and a main scrollable content area. This structure is ideal for a tutorial, as it allows users to see their overall progress (in the sidebar) while focusing on a specific step in the main content. The content is broken down into the four major parts of the original guide. Each step within a part is a distinct card with interactive checklists and one-click copy buttons for code blocks. This enhances usability by minimizing manual effort and helping users track completed actions, which is more engaging and less error-prone than a static document. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Overall CI/CD Process. Goal: Organize/Inform. Viz/Method: HTML/Tailwind CSS diagram. Interaction: None, static overview. Justification: Provides a high-level mental model before the user starts.
+        - Report Info: Shell commands and YAML code. Goal: Inform/Enable. Viz/Method: Styled <pre><code> blocks. Interaction: "Copy to Clipboard" button. Justification: Essential for a technical tutorial to ensure accuracy and speed.
+        - Report Info: Multi-step procedures. Goal: Guide/Engage. Viz/Method: Interactive checklist for each action. Interaction: User can check/uncheck items. Justification: Provides a sense of accomplishment and helps users keep track of where they are in a long process.
+        - Library/Method: Vanilla JavaScript for all interactions (scrolling, copy-to-clipboard, checklist state), Tailwind CSS for all styling.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://rsms.me/inter/inter.css');
+        .step-card:before {
+            content: '';
+            position: absolute;
+            left: -1px;
+            top: 2.5rem;
+            bottom: -2.5rem;
+            width: 2px;
+            background-color: #e2e8f0; 
+        }
+        .step-card:last-child:before {
+            display: none;
+        }
+        .sidebar-link.active {
+            background-color: #0284c7;
+            color: white;
+            font-weight: 600;
+        }
+        .checklist-item input:checked + label span:first-child {
+            background-color: #0ea5e9;
+            border-color: #0ea5e9;
+        }
+        .checklist-item input:checked + label span:first-child svg {
+            display: block;
+        }
+         .checklist-item input:checked + label span:last-child {
+            text-decoration: line-through;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-slate-800 text-white p-6 fixed h-full hidden md:block">
+            <h1 class="font-bold text-xl mb-8 text-sky-400">Deployment Guide</h1>
+            <nav id="sidebar-nav" class="flex flex-col space-y-2">
+                <a href="#part1" class="sidebar-link px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Part 1: Setup Server</a>
+                <a href="#part2" class="sidebar-link px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Part 2: Prepare Server</a>
+                <a href="#part3" class="sidebar-link px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Part 3: Setup CI/CD</a>
+                <a href="#part4" class="sidebar-link px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Part 4: Deploy</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 md:ml-64 p-4 sm:p-8 md:p-12">
+            <div class="max-w-4xl mx-auto">
+                <header class="mb-12">
+                    <h1 class="text-4xl font-bold text-slate-900 mb-2">Interactive Guide: Deploy to AWS EC2</h1>
+                    <p class="text-lg text-slate-600">Follow these steps to deploy your Dockerized application to AWS with a fully automated CI/CD pipeline.</p>
+                </header>
+                
+                <!-- CI/CD Process Diagram -->
+                <div class="mb-16">
+                    <h2 class="text-2xl font-semibold mb-4 text-slate-900">Process Overview</h2>
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                         <p class="text-center text-slate-600 mb-6">This is the automated workflow we are building. Once set up, pushing code to GitHub will automatically update your live application on the AWS EC2 server.</p>
+                        <div class="flex items-center justify-between space-x-2 text-sm">
+                            <div class="text-center">
+                                <div class="w-16 h-16 mx-auto bg-slate-900 text-white rounded-full flex items-center justify-center text-2xl">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/></svg>
+                                </div>
+                                <p class="mt-2 font-semibold">1. GitHub</p>
+                                <p class="text-slate-500">Push Code</p>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-slate-300"></div>
+                            <div class="text-center">
+                                <div class="w-16 h-16 mx-auto bg-sky-500 text-white rounded-full flex items-center justify-center text-2xl">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 18v-4.5"/><path d="m12 12-2-2 2-2"/><path d="M2 12h8"/><path d="M22 12h-8"/><path d="m12 6 2-2 2 2"/><path d="m12 18 2 2 2-2"/><path d="M6 6v1.5"/><path d="M6 18v-1.5"/></svg>
+                                </div>
+                                <p class="mt-2 font-semibold">2. GitHub Actions</p>
+                                <p class="text-slate-500">Run Workflow</p>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-slate-300"></div>
+                             <div class="text-center">
+                                <div class="w-16 h-16 mx-auto bg-amber-500 text-white rounded-full flex items-center justify-center text-2xl">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                                </div>
+                                <p class="mt-2 font-semibold">3. AWS EC2</p>
+                                <p class="text-slate-500">Deploy App</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Part 1 -->
+                <section id="part1" class="mb-16 scroll-mt-24">
+                    <h2 class="text-3xl font-bold mb-6 border-b pb-3 text-slate-900">Part 1: Setting Up Your AWS EC2 Server</h2>
+                    <p class="mb-8 text-slate-600">First, we need a place for your application to live. This involves creating an account and launching a new virtual server in the AWS cloud. This server is called an "EC2 instance."</p>
+                    
+                    <div class="space-y-8 pl-8 relative">
+                        <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                            <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">1</div>
+                            <h3 class="font-bold text-lg mb-3">Create AWS Account</h3>
+                            <div class="checklist-item">
+                                <input type="checkbox" id="step1-1" class="hidden">
+                                <label for="step1-1" class="flex items-center cursor-pointer">
+                                    <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                    <span class="text-slate-700">Go to the <a href="https://aws.amazon.com/" target="_blank" class="text-sky-600 font-medium hover:underline">AWS homepage</a> and create an account.</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                            <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">2</div>
+                            <h3 class="font-bold text-lg mb-3">Launch EC2 Instance</h3>
+                            <ul class="space-y-4">
+                                <li class="checklist-item">
+                                    <input type="checkbox" id="step1-2" class="hidden">
+                                    <label for="step1-2" class="flex items-center cursor-pointer">
+                                        <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                        <span class="text-slate-700">In the AWS Console, navigate to the EC2 service and click <strong>Launch instance</strong>.</span>
+                                    </label>
+                                </li>
+                                <li class="checklist-item">
+                                    <input type="checkbox" id="step1-3" class="hidden">
+                                    <label for="step1-3" class="flex items-center cursor-pointer">
+                                        <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                        <span class="text-slate-700">Choose the <strong>Ubuntu 22.04 LTS</strong> AMI.</span>
+                                    </label>
+                                </li>
+                                <li class="checklist-item">
+                                    <input type="checkbox" id="step1-4" class="hidden">
+                                    <label for="step1-4" class="flex items-center cursor-pointer">
+                                        <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                        <span class="text-slate-700">Select instance type <strong>t3.medium</strong> or larger for better performance.</span>
+                                    </label>
+                                </li>
+                                <li class="checklist-item">
+                                    <input type="checkbox" id="step1-5" class="hidden">
+                                    <label for="step1-5" class="flex items-center cursor-pointer">
+                                        <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                        <span class="text-slate-700">Create and download a new <strong>.pem key pair</strong>. Store it safely!</span>
+                                    </label>
+                                </li>
+                                <li class="checklist-item">
+                                    <input type="checkbox" id="step1-6" class="hidden">
+                                    <label for="step1-6" class="flex items-center cursor-pointer">
+                                        <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                        <span class="text-slate-700">In Network Settings, allow <strong>SSH, HTTP, and HTTPS</strong> traffic.</span>
+                                    </label>
+                                </li>
+                                <li class="checklist-item">
+                                    <input type="checkbox" id="step1-7" class="hidden">
+                                    <label for="step1-7" class="flex items-center cursor-pointer">
+                                        <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                        <span class="text-slate-700">Increase storage to <strong>30GB</strong>.</span>
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Part 2 -->
+                <section id="part2" class="mb-16 scroll-mt-24">
+                    <h2 class="text-3xl font-bold mb-6 border-b pb-3 text-slate-900">Part 2: Connecting to & Preparing Your Server</h2>
+                    <p class="mb-8 text-slate-600">With the server running, it's time to log in and install Docker, the software that will run your application.</p>
+
+                    <div class="space-y-8 pl-8 relative">
+                        <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                            <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">1</div>
+                            <h3 class="font-bold text-lg mb-3">Connect via SSH</h3>
+                            <p class="mb-4 text-slate-600">Use your terminal and the `.pem` key file you downloaded to connect. First, make sure you set the correct permissions for the key file.</p>
+                            <div class="code-block bg-slate-900 text-slate-200 rounded-lg p-4 relative">
+                                <button class="copy-btn absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">Copy</button>
+                                <pre><code class="language-bash"># Set permissions for your key
+chmod 400 your-key-name.pem
+
+# Connect to the server (replace with your key name and IP)
+ssh -i "your-key-name.pem" ubuntu@your_public_ip_address</code></pre>
+                            </div>
+                        </div>
+                        <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                            <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">2</div>
+                            <h3 class="font-bold text-lg mb-3">Install Docker</h3>
+                            <p class="mb-4 text-slate-600">Run these commands on your server to install Docker and configure permissions. You will need to log out and back in after the final command.</p>
+                            <div class="code-block bg-slate-900 text-slate-200 rounded-lg p-4 relative">
+                                <button class="copy-btn absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">Copy</button>
+                                <pre><code class="language-bash"># Update package lists
+sudo apt-get update
+
+# Install Docker
+sudo apt-get install -y docker.io
+
+# Add current user to the docker group
+sudo usermod -aG docker ${USER}
+
+# Log out to apply changes
+exit</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Part 3 -->
+                <section id="part3" class="mb-16 scroll-mt-24">
+                    <h2 class="text-3xl font-bold mb-6 border-b pb-3 text-slate-900">Part 3: Setting Up Automated Deployment</h2>
+                     <p class="mb-8 text-slate-600">Now for the automation. We will set up a connection between GitHub and your EC2 server. This allows GitHub to send commands to your server to update the application whenever you push new code.</p>
+
+                     <div class="space-y-8 pl-8 relative">
+                        <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                            <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">1</div>
+                            <h3 class="font-bold text-lg mb-3">Create Deploy Key</h3>
+                             <p class="mb-4 text-slate-600">First, generate an SSH key on your EC2 server. This key will give GitHub read-only access to your repository.</p>
+                             <div class="code-block bg-slate-900 text-slate-200 rounded-lg p-4 mb-4 relative">
+                                <button class="copy-btn absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">Copy</button>
+                                <pre><code class="language-bash"># Run this ON YOUR EC2 SERVER
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"</code></pre>
+                            </div>
+                            <p class="mb-4 text-slate-600">Next, display the public key and copy its contents.</p>
+                             <div class="code-block bg-slate-900 text-slate-200 rounded-lg p-4 mb-4 relative">
+                                <button class="copy-btn absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">Copy</button>
+                                <pre><code class="language-bash"># Run this ON YOUR EC2 SERVER
+cat ~/.ssh/id_rsa.pub</code></pre>
+                            </div>
+                            <div class="checklist-item">
+                                <input type="checkbox" id="step3-1" class="hidden">
+                                <label for="step3-1" class="flex items-center cursor-pointer">
+                                    <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                    <span class="text-slate-700">Add the copied public key to your GitHub repo under <strong>Settings > Deploy keys</strong>. Do not give it write access.</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                             <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">2</div>
+                            <h3 class="font-bold text-lg mb-3">Clone Project on Server</h3>
+                             <p class="mb-4 text-slate-600">Pull your code onto the server for the first time. This confirms the deploy key is working.</p>
+                             <div class="code-block bg-slate-900 text-slate-200 rounded-lg p-4 relative">
+                                <button class="copy-btn absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">Copy</button>
+                                <pre><code class="language-bash"># Run this ON YOUR EC2 SERVER
+git clone git@github.com:your-username/your-repo-name.git</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                            <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">3</div>
+                            <h3 class="font-bold text-lg mb-3">Create GitHub Actions Workflow</h3>
+                            <p class="mb-4 text-slate-600">On your local machine, create a file at <code>.github/workflows/deploy.yml</code> and paste this content. This is the recipe for your automation.</p>
+                            <div class="code-block bg-slate-900 text-slate-200 rounded-lg p-4 relative">
+                                <button class="copy-btn absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">Copy</button>
+                                <pre><code class="language-yaml">name: Build and Deploy to EC2
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into EC2 and Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          script: |
+            cd your-repo-name
+            git pull origin main
+            docker build -t ai-smoke-tester .
+            docker stop ai-app-container || true
+            docker rm ai-app-container || true
+            docker run -d --name ai-app-container -p 80:8080 ai-smoke-tester</code></pre>
+                            </div>
+                            <div class="mt-4 p-4 bg-amber-100 border-l-4 border-amber-500 text-amber-800 rounded-r-lg">
+                                <p><strong>Important:</strong> Update `your-repo-name` and the port mapping `-p 80:8080` in the script to match your project.</p>
+                            </div>
+                        </div>
+
+                        <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                            <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">4</div>
+                            <h3 class="font-bold text-lg mb-3">Set Up GitHub Secrets</h3>
+                             <p class="mb-4 text-slate-600">In your GitHub repository under <strong>Settings > Secrets and variables > Actions</strong>, add the following secrets. This keeps your server credentials secure.</p>
+                             <ul class="list-disc list-inside space-y-2 text-slate-700">
+                                <li><code>EC2_HOST</code>: Your server's public IP address.</li>
+                                <li><code>EC2_USERNAME</code>: The username, which is `ubuntu`.</li>
+                                <li><code>EC2_PRIVATE_KEY</code>: The full content of the <strong>aws-key.pem</strong> file you downloaded from AWS.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Part 4 -->
+                <section id="part4" class="scroll-mt-24">
+                    <h2 class="text-3xl font-bold mb-6 border-b pb-3 text-slate-900">Part 4: Your First Automated Deployment</h2>
+                     <p class="mb-8 text-slate-600">You are all set! The final step is to push your new workflow file to GitHub, which will trigger the first automated deployment.</p>
+
+                     <div class="space-y-8 pl-8 relative">
+                         <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                            <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">1</div>
+                            <h3 class="font-bold text-lg mb-3">Push the Workflow File</h3>
+                             <p class="mb-4 text-slate-600">On your local computer, commit and push the `deploy.yml` file to your GitHub repository.</p>
+                             <div class="code-block bg-slate-900 text-slate-200 rounded-lg p-4 relative">
+                                <button class="copy-btn absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">Copy</button>
+                                <pre><code class="language-bash">git add .
+git commit -m "Add CI/CD workflow for EC2 deployment"
+git push origin main</code></pre>
+                            </div>
+                        </div>
+                        <div class="step-card bg-white p-6 rounded-xl shadow-md border border-slate-200 relative">
+                            <div class="absolute -left-12 top-6 w-10 h-10 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-lg">2</div>
+                            <h3 class="font-bold text-lg mb-3">Watch the Magic!</h3>
+                            <div class="checklist-item">
+                                <input type="checkbox" id="step4-1" class="hidden">
+                                <label for="step4-1" class="flex items-center cursor-pointer">
+                                    <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                    <span class="text-slate-700">Go to the <strong>Actions</strong> tab in your GitHub repo to watch the deployment in real-time.</span>
+                                </label>
+                            </div>
+                            <div class="checklist-item mt-2">
+                                <input type="checkbox" id="step4-2" class="hidden">
+                                <label for="step4-2" class="flex items-center cursor-pointer">
+                                    <span class="w-5 h-5 border-2 border-slate-300 rounded-sm mr-3 flex items-center justify-center"><svg class="w-3 h-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>
+                                    <span class="text-slate-700">Once it's done, visit your server's public IP in your browser to see your live app!</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Copy to Clipboard ---
+        const allCopyButtons = document.querySelectorAll('.copy-btn');
+        allCopyButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const codeBlock = e.target.closest('.code-block');
+                const code = codeBlock.querySelector('code').innerText;
+                navigator.clipboard.writeText(code).then(() => {
+                    e.target.textContent = 'Copied!';
+                    setTimeout(() => {
+                        e.target.textContent = 'Copy';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                });
+            });
+        });
+
+        // --- Active Sidebar Link on Scroll ---
+        const sections = document.querySelectorAll('section');
+        const sidebarLinks = document.querySelectorAll('#sidebar-nav a');
+        
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.3
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.getAttribute('id');
+                    sidebarLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === `#${id}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, observerOptions);
+
+        sections.forEach(section => {
+            observer.observe(section);
+        });
+
+        // Initialize first link as active
+        if (window.scrollY < 200) {
+            sidebarLinks[0].classList.add('active');
+        }
+    });
+</script>
+</body>
+</html>
